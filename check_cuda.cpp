@@ -9,17 +9,28 @@
 int main() {
   int deviceCount;
   cudaDeviceProp deviceProp;
+  cudaError_t err;
   
-  cudaGetDeviceCount(&deviceCount);
+  err = cudaGetDeviceCount(&deviceCount);
 
-  if (deviceCount == 0) {
+  if (err == cudaErrorInsufficientDriver) {
+    printf("CRITICAL: Nvidia driver not loaded\n");
+    return(RC_CRITICAL);
+  } else if (err == cudaErrorNoDevice || deviceCount == 0) {
     printf("CRITICAL: No GPUs detected\n");
     return(RC_CRITICAL);
+  } else if (err != cudaSuccess) {
+    printf("UNKNOWN: Unexpected return code from cudaGetDeviceCount()\n");
+    printf("return code: %d\n", err);
+    return(RC_UNKNOWN);
   } else if (deviceCount == 1) {
     cudaGetDeviceProperties(&deviceProp, 0);
     printf("OK: %s (compute capability %d.%d)\n",
            deviceProp.name, deviceProp.major, deviceProp.minor);
     return(RC_OK);
+  } else if (deviceCount < 0) {
+    printf("UNKNOWN: nonsensical number of devices (%d)\n", deviceCount);
+    return(RC_UNKNOWN);
   } else {
     printf("OK: %d GPUs found\n", deviceCount);
     
